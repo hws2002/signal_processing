@@ -13,108 +13,82 @@ PI = math.pi
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--N_Fourier', type=int, default=32, help='Number of Fourier Series')
+parser.add_argument('--N_Fourier', type=int, default=64, help='Number of Fourier Series')
 args = parser.parse_args()
 
-# TODO: 1. Change N_Fourier to 2, 4, 8, 16, 32, 64, 128, get visualization results with differnet number of Fourier Series
 N_Fourier = args.N_Fourier
 
-# TODO: optional, implement visualization for semi-circle
+
 signal_name = "semicircle"
 
-# TODO: 2. Please implement the function that calculates the Nth fourier coefficient
-# Note that n starts from 0
+
 # For n = 0, return a0; n = 1, return b1; n = 2, return a1; n = 3, return b2; n = 4, return a2 ...
 # n = 2 * m - 1(m >= 1), return bm; n = 2 * m(m >= 1), return am.
  
-@lru_cache(maxsize=None)
-def square_wave(t):
-    return 0.5 * np.sign(math.sin(t)) + 0.5
 
-# 5점 Gauss-Legendre [-1,1]
-GL5_nodes = [-0.9061798459, -0.5384693101, 0.0, 0.5384693101, 0.9061798459]
-GL5_weights = [0.2369268850, 0.4786286705, 0.5688888889, 0.4786286705, 0.2369268850]
+NUM_POINTS = 300
+GL_nodes, GL_weights = np.polynomial.legendre.leggauss(NUM_POINTS)
+
+# # 10점 가우스-르장드르 노드 ([-1, 1] 구간)
+# GL_nodes = [
+#     -0.9739065285, -0.8650633667, -0.6794095683, -0.4333953941, -0.1488743390,
+#      0.1488743390,  0.4333953941,  0.6794095683,  0.8650633667,  0.9739065285
+# ]
+# # 10점 가우스-르장드르 가중치
+# GL_weights = [
+#     0.0666713443, 0.1494513491, 0.2190863625, 0.2692667193, 0.2955242247,
+#     0.2955242247, 0.2692667193, 0.2190863625, 0.1494513491, 0.0666713443
+# ]
 
 # ------------------ 구간 변환 적용 Gauss-Legendre ------------------
-# def gauss_legendre(f, n, a, b):
-#     res = 0.0
-#     for i in range(5):
-#         t = 0.5*(b-a)*GL5_nodes[i] + 0.5*(a+b)
-#         w = GL5_weights[i]
-#         res += w * f(t, n)
-#     res *= 0.5*(b-a)
-#     return res
+def gauss_legendre(f, n, a, b):
+    res = 0.0
+    for i in range(NUM_POINTS):
+        t = 0.5*(b-a)*GL_nodes[i] + 0.5*(a+b)
+        w = GL_weights[i]
+        res += w * f(t, n)
+    res *= 0.5*(b-a)
+    return res
 
-# # ------------------ 적분 함수 ------------------
-# def integrand_a(t, n):
-#     return math.sqrt(PI**2 - t**2) * math.cos(n*t)
+# ------------------ 적분 함수 ------------------
+def integrand_a(t, n):
+    return math.sqrt(PI**2 - t**2) * math.cos(n*t)
 
-# # def integrand_b(t, n):
-# #     return math.sqrt(PI**2 - t**2) * math.sin(n*t)
+# def integrand_b(t, n):
+#     return math.sqrt(PI**2 - t**2) * math.sin(n*t)
 
-# # ------------------ Fourier 계수 계산 ------------------
-# @lru_cache(maxsize=None)
-# def fourier_coefficient(n):
-#     if n == 0:  # a0
-#         return (PI**2)/4
-#     if n % 2 :  # b_m, n=1,3,5,... → b1,b2,...
-#         return 0
-#     else:  # a_m, n=2,4,6,... → a1,a2,...
-#         m = (n+1)//2
-#         integral = gauss_legendre(integrand_a, m, 0, PI)
-#         coef = integral * -2/PI if  m % 2 else integral * 2/PI
-#     return coef 
-
-from scipy.integrate import quad  # SciPy의 적분 함수 import
-
-# quad 함수에 전달할 적분 대상 함수
-# t_prime은 t' = t-pi 를 의미합니다.
-def integrand_a_scipy(t_prime, m):
-    return math.sqrt(PI**2 - t_prime**2) * math.cos(m * t_prime)
-
+# ------------------ Fourier 계수 계산 ------------------
 @lru_cache(maxsize=None)
 def fourier_coefficient(n):
-    """SciPy의 quad 함수를 사용하여 푸리에 계수를 계산합니다."""
-    if n == 0:  # a0 (DC 성분)
-        return (PI**2) / 4
-    
-    if n % 2:  # b_m 계수 (홀수 n) -> 이 신호에서는 0
+    if n == 0:  # a0
+        return (PI**2)/4
+    if n % 2 :  # b_m, n=1,3,5,... → b1,b2,...
         return 0
-        
-    else:  # a_m 계수 (짝수 n)
-        m = n // 2  # 주파수 (a_1, a_2, ...)
-        
-        # quad를 이용한 수치 적분: 짝함수이므로 [0, PI] 구간을 적분
-        # quad(함수, 시작, 끝, 추가 인자)는 (결과, 오차) 튜플을 반환합니다.
-        integral_val, _ = quad(integrand_a_scipy, 0, PI, args=(m,))
-        
-        # a_m = (2*(-1)^m / PI) * [0, PI] 구간 적분값
-        coef = (2 / PI) * integral_val * ((-1)**m)
-        return coef
+    else:  # a_m, n=2,4,6,... → a1,a2,...
+        m = (n+1)//2
+        integral = gauss_legendre(integrand_a, m, 0, PI)
+        coef = integral * -2/PI if  m % 2 else integral * 2/PI
+    return coef 
 
-# TODO: optional. implement the semi circle wave function
+
 def semi_circle_wave(t):
     return np.sqrt(PI**2 - (t - PI)**2)
 
 def function(t):
-    if signal_name == "square":
-        return square_wave(t)
-    elif signal_name == "semicircle":
-        return semi_circle_wave(t)
-    else:
-        raise Exception("Unknown Signal")
+    return semi_circle_wave(t)
 
 
+FOLDER = f"media/{signal_name}_{N_Fourier}"
 def visualize():
-    if not os.path.exists(f"{signal_name}_{N_Fourier}"):
-        os.makedirs(f"{signal_name}_{N_Fourier}")
+    if not os.path.exists(FOLDER):
+        os.makedirs(FOLDER)
 
     frames = 100
 
     # x and y are for drawing the original function
-    x = np.linspace(0, 2 * math.pi, 1000)
-    y = np.zeros(1000, dtype = float)
-    for i in range(1000):
+    x = np.linspace(0, 2 * math.pi, 2000)
+    y = np.zeros(2000, dtype = float)
+    for i in range(2000):
         y[i] = function(x[i])
 
     for i in range(frames):
@@ -152,14 +126,14 @@ def visualize():
         plt.plot(x, y, '-')
         plt.plot([time, point_pos_array[-1][0]], [f_t, point_pos_array[-1][1]], '-', color = 'r')
         plt.gca().set_aspect('equal', adjustable='box')
-        plt.savefig(os.path.join(f"{signal_name}_{N_Fourier}", "{}.png".format(i)))
+        plt.savefig(os.path.join(FOLDER, "{}.png".format(i)))
         # plt.show()
         plt.close()
         
     images = []
     for i in range(frames):
-        images.append(imageio.imread(os.path.join(f"{signal_name}_{N_Fourier}", "{}.png".format(i))))
-    imageio.mimsave(f"{signal_name}_{N_Fourier}.mp4", images)
+        images.append(imageio.imread(os.path.join(FOLDER, "{}.png".format(i))))
+    imageio.mimsave(os.path.join("media", f"{signal_name}_{N_Fourier}.mp4"), images)
 
 
 if __name__ == "__main__":
