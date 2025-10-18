@@ -53,8 +53,8 @@ def function(t):
 
 
 def visualize():
-    if not os.path.exists(signal_name):
-        os.makedirs(signal_name)
+    if not os.path.exists(f"{signal_name}_{N_Fourier}"):
+        os.makedirs(f"{signal_name}_{N_Fourier}")
 
     frames = 100
 
@@ -99,14 +99,14 @@ def visualize():
         plt.plot(x, y, '-')
         plt.plot([time, point_pos_array[-1][0]], [f_t, point_pos_array[-1][1]], '-', color = 'r')
         plt.gca().set_aspect('equal', adjustable='box')
-        plt.savefig(os.path.join(signal_name, "{}.png".format(i)))
+        plt.savefig(os.path.join(f"{signal_name}_{N_Fourier}", "{}.png".format(i)))
         # plt.show()
         plt.close()
         
     images = []
     for i in range(frames):
-        images.append(imageio.imread(os.path.join(signal_name, "{}.png".format(i))))
-    imageio.mimsave('{}.mp4'.format(signal_name), images)
+        images.append(imageio.imread(os.path.join(f"{signal_name}_{N_Fourier}", "{}.png".format(i))))
+    imageio.mimsave(f"{signal_name}_{N_Fourier}.mp4", images)
 
 
 if __name__ == "__main__":
