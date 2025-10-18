@@ -49,21 +49,21 @@ def gauss_legendre(f, n, a, b):
 def integrand_a(t, n):
     return math.sqrt(PI**2 - t**2) * math.cos(n*t)
 
-def integrand_b(t, n):
-    return math.sqrt(PI**2 - t**2) * math.sin(n*t)
+# def integrand_b(t, n):
+#     return math.sqrt(PI**2 - t**2) * math.sin(n*t)
 
 # ------------------ Fourier 계수 계산 ------------------
 @lru_cache(maxsize=None)
 def fourier_coefficient(n):
     if n == 0:  # a0
         return (PI**2)/4
-    if n % 2 == 0:  # a_m, n=2,4,6,... → a1,a2,...
+    if n % 2 :  # b_m, n=1,3,5,... → b1,b2,...
+        return 0
+    else:  # a_m, n=2,4,6,... → a1,a2,...
         m = (n+1)//2
         integral = gauss_legendre(integrand_a, m, 0, PI)
         coef = integral * -2/PI if  m % 2 else integral * 2/PI
-        return coef 
-    else:  # b_m, n=1,3,5,... → b1,b2,...
-        return 0
+    return coef 
 
 # TODO: optional. implement the semi circle wave function
 def semi_circle_wave(t):
