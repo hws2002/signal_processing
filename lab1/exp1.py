@@ -6,6 +6,9 @@ import os
 import imageio
 from matplotlib.pyplot import cm
 
+from functools import lru_cache
+PI = math.pi
+
 # TODO: 1. Change N_Fourier to 2, 4, 8, 16, 32, 64, 128, get visualization results with differnet number of Fourier Series
 N_Fourier = 64
 
@@ -16,12 +19,25 @@ signal_name = "square"
 # Note that n starts from 0
 # For n = 0, return a0; n = 1, return b1; n = 2, return a1; n = 3, return b2; n = 4, return a2 ...
 # n = 2 * m - 1(m >= 1), return bm; n = 2 * m(m >= 1), return am. 
+
+@lru_cache(maxsize=None)
 def fourier_coefficient(n):
-    pass
+    if n == 0 :
+        return 1/2
+    if n % 2 : # bm
+        m = (n+1)//2
+        if m % 2 : # odd
+            coef = 2/(m * PI)
+        else : # even
+            coef = 0
+    else : # am
+        coef = 0
+    return coef
 
 # TODO: 3. implement the signal function
+@lru_cache(maxsize=None)
 def square_wave(t):
-    pass
+    return 0.5 * np.sign(math.sin(t)) + 0.5
 
 # TODO: optional. implement the semi circle wave function
 def semi_circle_wave(t):
