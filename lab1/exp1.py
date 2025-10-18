@@ -6,11 +6,18 @@ import os
 import imageio
 from matplotlib.pyplot import cm
 
+
+import argparse
 from functools import lru_cache
 PI = math.pi
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--N_Fourier', type=int, default=128, help='Number of Fourier Series')
+args = parser.parse_args()
+
 # TODO: 1. Change N_Fourier to 2, 4, 8, 16, 32, 64, 128, get visualization results with differnet number of Fourier Series
-N_Fourier = 32
+N_Fourier = args.N_Fourier
 
 # TODO: optional, implement visualization for semi-circle
 signal_name = "square"
