@@ -10,7 +10,7 @@ from functools import lru_cache
 PI = math.pi
 
 # TODO: 1. Change N_Fourier to 2, 4, 8, 16, 32, 64, 128, get visualization results with differnet number of Fourier Series
-N_Fourier = 64
+N_Fourier = 32
 
 # TODO: optional, implement visualization for semi-circle
 signal_name = "square"
