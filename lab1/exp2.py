@@ -13,7 +13,7 @@ PI = math.pi
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--N_Fourier', type=int, default=64, help='Number of Fourier Series')
+parser.add_argument('--N_Fourier', type=int, default=128, help='Number of Fourier Series')
 args = parser.parse_args()
 
 N_Fourier = args.N_Fourier
@@ -26,7 +26,7 @@ signal_name = "semicircle"
 # n = 2 * m - 1(m >= 1), return bm; n = 2 * m(m >= 1), return am.
  
 
-NUM_POINTS = 300
+NUM_POINTS = 125
 GL_nodes, GL_weights = np.polynomial.legendre.leggauss(NUM_POINTS)
 
 # ------------------ 구간 변환 적용 Gauss-Legendre ------------------
