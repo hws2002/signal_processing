@@ -97,14 +97,14 @@ def visualize():
 
         f_t = function(time)
         for j in range(N_Fourier):
-            # calculate circle for a_{n}
+            # calculate circle for b_{n}
             radius_array[2 * j + 1] = fourier_coefficient(2 * j + 1)
             point_pos_array[2 * j + 2] = [point_pos_array[2 * j + 1][0] + radius_array[2 * j + 1] * math.cos((j + 1) * time),   # x axis
                                         point_pos_array[2 * j + 1][1] + radius_array[2 * j + 1] * math.sin((j + 1) * time)]     # y axis
             circle = patches.Circle(point_pos_array[2 * j + 1], radius_array[2 * j + 1], fill = False, color = next(color))
             axes.add_artist(circle)
             
-            # calculate circle for b_{n}
+            # calculate circle for a_{n}
             radius_array[2 * j + 2] = fourier_coefficient(2 * j + 2)
             point_pos_array[2 * j + 3] = [point_pos_array[2 * j + 2][0] + radius_array[2 * j + 2] * math.sin((j + 1) * time),   # x axis
                                         point_pos_array[2 * j + 2][1] + radius_array[2 * j + 2] * math.cos((j + 1) * time)]     # y axis
