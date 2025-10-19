@@ -215,12 +215,124 @@ $$
 
 
 ## 数值积分
-대표적인 机械法들을 써서 구해냈다.  
+대표적인 机械法들을 써서 구해냈다.
 
-### 1. Gauss-Legendre
-먼저 쓴 방법은 Gauss-Legendre방식이다. 이는 节点과 权重만 있으면 구현이 매우 쉬운 편이지만, 节点이 150개  정도 있어야 `N_Fourier=128` 인 경우에도 안정적인 근사값을 구해낼 수 있었다.
+### 1. Gauss-Legendre 积分法
 
-### 2. FFT
+먼저 쓴 방법은 Gauss-Legendre방식이다.
+
+**원리:**
+- 구간 $[-1, 1]$에서 최적화된 节点 $x_i$와 权重 $w_i$를 사용
+- 임의 구간 $[a, b]$로 변환: $t = \frac{b-a}{2}x_i + \frac{a+b}{2}$
+- 적분 근사: $\int_a^b f(t)\,dt \approx \frac{b-a}{2} \sum_{i=1}^{n} w_i \cdot f(t_i)$
+
+**구현:**
+```python
+GL_nodes, GL_weights = np.polynomial.legendre.leggauss(NUM_POINTS)
+
+def gauss_legendre(f, n, a, b):
+    res = 0.0
+    for i in range(NUM_POINTS):
+        t = 0.5*(b-a)*GL_nodes[i] + 0.5*(a+b)
+        w = GL_weights[i]
+        res += w * f(t, n)
+    res *= 0.5*(b-a)
+    return res
+```
+
+**특징:**
+- 구현이 매우 간단 (节点과 权重만 있으면 됨)
+- 부드러운 함수에 대해 높은 정확도
+- 하지만 节点이 125개 정도 있어야 `N_Fourier=128`인 경우에도 안정적인 근사값을 구해낼 수 있었다
+- 특히 **낮은 n값 (n=1,2)에서 불안정**: 끝점 $t=\pi$에서 $\sqrt{\pi^2-t^2} \to 0$의 특이성 때문
+
+**정확도:**
+- `NUM_POINTS = 300`: 모든 N_Fourier에서 안정적
+- `NUM_POINTS = 125`: N_Fourier=128까지 가능
+- `NUM_POINTS = 50`: 낮은 차수에서도 오차 발생
+
+### 2. FFT (Fast Fourier Transform)
+
+더 빠르고 정확한 방법으로 **Cooley-Tukey Radix-2 DIT FFT 알고리즘**을 직접 구현하여 사용했다.
+
+**원리:**
+- 함수를 균일하게 샘플링: $t_k = \frac{2\pi k}{N}, k=0,1,...,N-1$ (N은 2의 거듭제곱)
+- Cooley-Tukey FFT로 주파수 성분 추출 (DFT를 $O(N\log N)$으로 계산)
+- Fourier 계수로 변환:
+  - $a_0 = \frac{1}{N} \text{Re}[X_0]$
+  - $a_m = \frac{2}{N} \text{Re}[X_m]$, $(m \geq 1)$
+  - $b_m = -\frac{2}{N} \text{Im}[X_m]$
+
+**구현 (Cooley-Tukey Radix-2 DIT):**
+```python
+def fft_manual(x):
+    N = len(x)
+    if N <= 1: return x
+
+    # 1단계: 비트 역순 재정렬 (bit-reversal permutation)
+    j = 0
+    for i in range(1, N):
+        bit = N >> 1
+        while j & bit:
+            j ^= bit
+            bit >>= 1
+        j ^= bit
+        if i < j: x[i], x[j] = x[j], x[i]
+
+    # 2단계: 버터플라이 연산 (butterfly operations)
+    block_size = 2
+    while block_size <= N:
+        half_block = block_size // 2
+        angle = -2π / block_size
+        twiddle_base = e^(i·angle)  # 회전인자
+        for i in range(0, N, block_size):
+            twiddle = 1.0
+            for j in range(half_block):
+                k = i + j
+                temp = twiddle * x[k + half_block]
+                x[k + half_block] = x[k] - temp
+                x[k] = x[k] + temp
+                twiddle *= twiddle_base
+        block_size <<= 1
+    return x
+```
+
+**알고리즘 설명:**
+1. **비트 역순 재정렬**: 입력 데이터를 인덱스의 비트를 뒤집은 순서로 재배치
+2. **버터플라이 연산**: 분할 정복 방식으로 DFT 계산
+   - block_size를 2, 4, 8, ... N까지 2배씩 증가
+   - 각 블록 내에서 회전인자(twiddle factor)를 곱해 합산
+
+**Fourier 계수 계산:**
+```python
+def calculate_all_coeffs_manual(num_coeffs, N_samples=2048):
+    t = np.linspace(0, 2π, N_samples, endpoint=False)
+    y = semi_circle_wave(t).tolist()
+    fft_result = fft_manual(y)
+
+    a0 = fft_result[0].real / N_samples
+    a_m = 2 * [fft_result[m].real / N_samples for m in 1..num_coeffs]
+    b_m = -2 * [fft_result[m].imag / N_samples for m in 1..num_coeffs]
+    return a0, a_m, b_m
+```
+
+**장점:**
+- 계산 속도 $O(N\log N)$으로 매우 빠름 (vs. DFT의 $O(N^2)$)
+- 모든 차수의 계수를 한 번에 계산
+- 수치적으로 매우 안정적 (Gauss-Legendre의 끝점 특이성 문제 없음)
+- **N_samples=2048**로 설정하여 높은 정확도
+
+**단점:**
+- 샘플 개수가 2의 거듭제곱이어야 함
+- 메모리 사용량이 샘플 개수에 비례
+
+**Gauss-Legendre vs. FFT:**
+| 특징 | Gauss-Legendre | FFT |
+|------|----------------|-----|
+| 계산 속도 | 각 계수마다 별도 적분 필요 | 모든 계수 한 번에 ($O(N\log N)$) |
+| 안정성 | 낮은 n에서 불안정 (끝점 특이성) | 모든 n에서 안정적 |
+| 유연성 | 적분 구간 조정 가능 | 샘플링 고정 |
+| 구현 난이도 | 간단 (节点/权重만 필요) | 복잡 (비트 역순, 버터플라이) |
 
 
 ## 可视化结果

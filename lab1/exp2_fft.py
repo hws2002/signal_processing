@@ -13,7 +13,7 @@ PI = math.pi
 
 # --- 1. 기본 설정 ---
 parser = argparse.ArgumentParser()
-parser.add_argument('--N_Fourier', type=int, default=128, help='Number of Fourier Series')
+parser.add_argument('--N_Fourier', type=int, default=2, help='Number of Fourier Series')
 args = parser.parse_args()
 N_Fourier = args.N_Fourier
 signal_name = "semicircle"
