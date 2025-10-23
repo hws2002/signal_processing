@@ -63,14 +63,62 @@ y_끝 = a0 + a1·cos(1·t) + b1·sin(1·t) + a2·cos(2·t) + b2·sin(2·t) + ...
     = Fourier 급수 근사값!
 
 - y_끝 ≈ f(t): N_Fourier가 클수록 정확
-- 시간 진행: 끝점이 원본 함수 궤적을 따라감
+
+## 自加函数 `compare_values`
+
+为了量化评估傅里叶级数近似的精度，添加了实际值与预测值的对比分析功能。
+
+该函数计算给定时间点 $t$ 处的傅里叶级数近似值：
+$$
+\hat{f}(t) = a_0 + \sum_{n=1}^{N} [a_n \cos(nt) + b_n \sin(nt)]
+$$
+
+### 2. 误差指标
+
+在100个测试点上计算以下误差指标：
+
+**均方误差 (MSE)**
+$$
+\text{MSE} = \frac{1}{n} \sum_{i=1}^{n} (f(t_i) - \hat{f}(t_i))^2
+$$
+
+**平均绝对误差 (MAE)**
+$$
+\text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |f(t_i) - \hat{f}(t_i)|
+$$
+
+**最大误差**
+$$
+\text{Max Error} = \max_{i} |f(t_i) - \hat{f}(t_i)|
+$$
+
+### 3. 可视化输出
+
+生成双子图对比分析：
+- **左图**：蓝色实线（实际值）vs 红色虚线（预测值）
+- **右图**：绿色线显示误差 $e(t) = f(t) - \hat{f}(t)$ 随时间的变化
+
+### 4. 结果分析
+
+**方波信号特点**：
+- 不连续点处出现 Gibbs 现象
+- $N \geq 32$ 时大部分区间近似良好
+- 最大误差集中在不连续点附近
+
+**半圆波信号特点**：
+- 连续且光滑，收敛速度快
+- $N \geq 64$ 时精度很高
+- 端点处（导数无穷大）误差略大
+
+
 # 任务一 ： 可视化方波信号
 
 ## 傅里叶系数
 
 ### 원함수 분석
 
-주어진 함수 `f(t) = 0.5·sgn(sin(t)) + 0.5` 는 주기가 $T = 2\pi$ 이고, 다음과 같은 사각파(Square Wave) 형태를 가집니다.
+주어진 함수 `f(t) = 0.5·sgn(sin(t)) + 0.5` 는 주기가 $T = 2\pi$ 이고, 다음과 같은 사각파(Square Wave) 형태를 가집니다.  
+
 $$
 f(t) = \begin{cases} 1 & \text{if } 0 < t < \pi \\ 0 & \text{if } \pi < t < 2\pi \end{cases}
 $$
@@ -212,11 +260,9 @@ $$
 
 
 ## 数值积分
-대표적인 机械法들을 써서 구해냈다.
+대표적인 机械法를 써서 구해냈다.
 
-### 1. Gauss-Legendre 积分法
-
-먼저 쓴 방법은 Gauss-Legendre방식이다.
+### Gauss-Legendre 积分法
 
 **원리:**
 - 구간 $[-1, 1]$에서 최적화된 节点 $x_i$와 权重 $w_i$를 사용
@@ -248,89 +294,63 @@ def gauss_legendre(f, n, a, b):
 - `NUM_POINTS = 125`: N_Fourier=128까지 가능
 - `NUM_POINTS = 50`: 낮은 차수에서도 오차 발생
 
-### 2. FFT (Fast Fourier Transform)
-
-더 빠르고 정확한 방법으로 **Cooley-Tukey Radix-2 DIT FFT 알고리즘**을 직접 구현하여 사용했다.
-
-**원리:**
-- 함수를 균일하게 샘플링: $t_k = \frac{2\pi k}{N}, k=0,1,...,N-1$ (N은 2의 거듭제곱)
-- Cooley-Tukey FFT로 주파수 성분 추출 (DFT를 $O(N\log N)$으로 계산)
-- Fourier 계수로 변환:
-  - $a_0 = \frac{1}{N} \text{Re}[X_0]$
-  - $a_m = \frac{2}{N} \text{Re}[X_m]$, $(m \geq 1)$
-  - $b_m = -\frac{2}{N} \text{Im}[X_m]$
-
-**구현 (Cooley-Tukey Radix-2 DIT):**
-```python
-def fft_manual(x):
-    N = len(x)
-    if N <= 1: return x
-
-    # 1단계: 비트 역순 재정렬 (bit-reversal permutation)
-    j = 0
-    for i in range(1, N):
-        bit = N >> 1
-        while j & bit:
-            j ^= bit
-            bit >>= 1
-        j ^= bit
-        if i < j: x[i], x[j] = x[j], x[i]
-
-    # 2단계: 버터플라이 연산 (butterfly operations)
-    block_size = 2
-    while block_size <= N:
-        half_block = block_size // 2
-        angle = -2π / block_size
-        twiddle_base = e^(i·angle)  # 회전인자
-        for i in range(0, N, block_size):
-            twiddle = 1.0
-            for j in range(half_block):
-                k = i + j
-                temp = twiddle * x[k + half_block]
-                x[k + half_block] = x[k] - temp
-                x[k] = x[k] + temp
-                twiddle *= twiddle_base
-        block_size <<= 1
-    return x
-```
-
-**알고리즘 설명:**
-1. **비트 역순 재정렬**: 입력 데이터를 인덱스의 비트를 뒤집은 순서로 재배치
-2. **버터플라이 연산**: 분할 정복 방식으로 DFT 계산
-   - block_size를 2, 4, 8, ... N까지 2배씩 증가
-   - 각 블록 내에서 회전인자(twiddle factor)를 곱해 합산
-
-**Fourier 계수 계산:**
-```python
-def calculate_all_coeffs_manual(num_coeffs, N_samples=2048):
-    t = np.linspace(0, 2π, N_samples, endpoint=False)
-    y = semi_circle_wave(t).tolist()
-    fft_result = fft_manual(y)
-
-    a0 = fft_result[0].real / N_samples
-    a_m = 2 * [fft_result[m].real / N_samples for m in 1..num_coeffs]
-    b_m = -2 * [fft_result[m].imag / N_samples for m in 1..num_coeffs]
-    return a0, a_m, b_m
-```
-
-**장점:**
-- 계산 속도 $O(N\log N)$으로 매우 빠름 (vs. DFT의 $O(N^2)$)
-- 모든 차수의 계수를 한 번에 계산
-- 수치적으로 매우 안정적 (Gauss-Legendre의 끝점 특이성 문제 없음)
-- **N_samples=2048**로 설정하여 높은 정확도
-
-**단점:**
-- 샘플 개수가 2의 거듭제곱이어야 함
-- 메모리 사용량이 샘플 개수에 비례
-
-**Gauss-Legendre vs. FFT:**
-| 특징 | Gauss-Legendre | FFT |
-|------|----------------|-----|
-| 계산 속도 | 각 계수마다 별도 적분 필요 | 모든 계수 한 번에 ($O(N\log N)$) |
-| 안정성 | 낮은 n에서 불안정 (끝점 특이성) | 모든 n에서 안정적 |
-| 유연성 | 적분 구간 조정 가능 | 샘플링 고정 |
-| 구현 난이도 | 간단 (节点/权重만 필요) | 복잡 (비트 역순, 버터플라이) |
-
-
 ## 可视化结果
 
+### 实验数据汇总
+
+对不同的傅里叶级数项数 $N$ 进行了近似精度测试，在100个等距采样点上计算误差指标。结果如下：
+
+| $N$ | MSE | MAE | Max Error |
+|-----|---------|---------|-----------|
+| 2 | 0.057117 | 0.149177 | 1.239647 |
+| 8 | 0.010920 | 0.041603 | 0.682521 |
+| 16 | 0.005205 | 0.021305 | 0.491135 |
+| 32 | 0.002579 | 0.012229 | 0.350399 |
+| 64 | 0.001252 | 0.006805 | 0.248903 |
+| 128 | 0.000625 | 0.004236 | 0.176437 |
+
+### 误差分析
+
+**收敛趋势：**
+- 随着 $N$ 的增加，所有误差指标呈现指数级下降
+- MSE 从 0.057 ($N=2$) 降至 0.0006 ($N=128$)，提升约 **90倍**
+- MAE 从 0.149 ($N=2$) 降至 0.004 ($N=128$)，提升约 **35倍**
+- Max Error 从 1.240 ($N=2$) 降至 0.176 ($N=128$)，提升约 **7倍**
+
+**关键观察：**
+1. **$N=2$**：近似效果较差，最大误差超过1.2，仅能捕捉函数的基本形状
+2. **$N=8-16$**：误差快速下降，开始呈现半圆波的基本轮廓
+3. **$N=32$**：MSE < 0.003，大部分区域近似良好
+4. **$N≥64$**：MAE < 0.01，视觉上几乎完美重合
+5. **$N=128$**：MSE仅为0.0006，达到极高精度
+
+**误差分布特征：**
+- 最大误差始终出现在 $t=0$ (和 $t=2\pi$) 处
+- 这是因为半圆波在端点处导数趋于无穷大 ($\lim_{t\to 0^+} f'(t) = +\infty$)
+- 中间区域 ($t \in [\pi/2, 3\pi/2]$) 收敛最快，误差最小
+- Gibbs 现象不明显，因为函数本身连续且光滑（除端点外）
+
+**性能提升规律：**
+
+每当 $N$ 翻倍，MSE 大约减半：
+- $N: 8 \to 16$, MSE: $0.0109 \to 0.0052$ (减少52%)
+- $N: 16 \to 32$, MSE: $0.0052 \to 0.0026$ (减少50%)
+- $N: 32 \to 64$, MSE: $0.0026 \to 0.0013$ (减少51%)
+- $N: 64 \to 128$, MSE: $0.0013 \to 0.0006$ (减少50%)
+
+这表明傅里叶级数对光滑周期函数具有良好的收敛性。
+
+### 可视化观察
+
+* **$N=2, 8$**：红色虚线（预测值）在端点附近明显偏离蓝色实线（实际值）
+* **$N=16, 32$**：整体拟合良好，但在 $t \in [0, 1]$ 和 $t \in [5, 6]$ 区间仍有轻微波动
+* **$N≥64$**：预测曲线几乎完全重合于实际曲线，仅在端点处有微小偏差
+
+误差曲线（右图）显示：
+- 端点处误差呈现尖峰
+- 中间平滑区域误差接近0
+- 随着 $N$ 增大，尖峰高度显著降低
+
+## Others
+
+lru_cache를 사용해 한번의 계산으로 coefficient를 저장해 다시 사용하게 했다.
