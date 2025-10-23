@@ -58,6 +58,72 @@ def function(t):
     else:
         raise Exception("Unknown Signal")
 
+# Fourier series approximation (predicted value)
+def fourier_approximation(t, n_terms):
+    """
+    Calculate approximation at t using n_terms Fourier coefficients
+    """
+    result = fourier_coefficient(0)  # a0
+    for j in range(n_terms):
+        # b_m term
+        result += fourier_coefficient(2 * j + 1) * math.sin((j + 1) * t)
+        # a_m term
+        result += fourier_coefficient(2 * j + 2) * math.cos((j + 1) * t)
+    return result
+
+# Compare actual vs predicted values
+def compare_values():
+    """
+    Compare actual and predicted values at multiple time points and calculate errors
+    """
+    test_points = np.linspace(0, 2 * PI, 100)
+    actual_values = np.array([function(t) for t in test_points])
+    predicted_values = np.array([fourier_approximation(t, N_Fourier) for t in test_points])
+
+    # Calculate errors
+    mse = np.mean((actual_values - predicted_values) ** 2)
+    mae = np.mean(np.abs(actual_values - predicted_values))
+    max_error = np.max(np.abs(actual_values - predicted_values))
+
+    print(f"=== Actual vs Predicted Comparison (N_Fourier={N_Fourier}) ===")
+    print(f"Mean Squared Error (MSE): {mse:.6f}")
+    print(f"Mean Absolute Error (MAE): {mae:.6f}")
+    print(f"Max Error: {max_error:.6f}")
+    print("\nSample Comparison (10 points):")
+    print(f"{'Time(t)':<12} {'Actual':<12} {'Predicted':<12} {'Error':<12}")
+    print("-" * 48)
+    for i in range(0, 100, 10):
+        t = test_points[i]
+        actual = actual_values[i]
+        predicted = predicted_values[i]
+        error = abs(actual - predicted)
+        print(f"{t:<12.4f} {actual:<12.6f} {predicted:<12.6f} {error:<12.6f}")
+
+    # Plot comparison
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(test_points, actual_values, 'b-', label='Actual', linewidth=2)
+    plt.plot(test_points, predicted_values, 'r--', label='Predicted (Fourier)', linewidth=2)
+    plt.xlabel('t')
+    plt.ylabel('Value')
+    plt.title(f'Actual vs Predicted (N={N_Fourier})')
+    plt.legend()
+    plt.grid(True)
+
+    plt.subplot(1, 2, 2)
+    plt.plot(test_points, actual_values - predicted_values, 'g-', linewidth=2)
+    plt.xlabel('t')
+    plt.ylabel('Error')
+    plt.title('Error (Actual - Predicted)')
+    plt.grid(True)
+    plt.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
+
+    plt.tight_layout()
+    plt.savefig(f'{signal_name}_{N_Fourier}_comparison.png', dpi=150)
+    print(f"\nComparison plot saved: {signal_name}_{N_Fourier}_comparison.png")
+    plt.show()
+
 
 def visualize():
     if not os.path.exists(f"{signal_name}_{N_Fourier}"):
@@ -118,3 +184,4 @@ def visualize():
 
 if __name__ == "__main__":
     visualize()
+    compare_values()
