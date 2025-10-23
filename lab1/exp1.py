@@ -120,14 +120,16 @@ def compare_values():
     plt.axhline(y=0, color='k', linestyle='-', linewidth=0.5)
 
     plt.tight_layout()
-    plt.savefig(f'{signal_name}_{N_Fourier}_comparison.png', dpi=150)
-    print(f"\nComparison plot saved: {signal_name}_{N_Fourier}_comparison.png")
+    comparison_path = os.path.join("media", f'{signal_name}_{N_Fourier}_comparison.png')
+    plt.savefig(comparison_path, dpi=150)
+    print(f"\nComparison plot saved: {comparison_path}")
     plt.show()
 
 
+FOLDER = f"media/{signal_name}_{N_Fourier}"
 def visualize():
-    if not os.path.exists(f"{signal_name}_{N_Fourier}"):
-        os.makedirs(f"{signal_name}_{N_Fourier}")
+    if not os.path.exists(FOLDER):
+        os.makedirs(FOLDER)
 
     frames = 100
 
@@ -172,14 +174,14 @@ def visualize():
         plt.plot(x, y, '-')
         plt.plot([time, point_pos_array[-1][0]], [f_t, point_pos_array[-1][1]], '-', color = 'r')
         plt.gca().set_aspect('equal', adjustable='box')
-        plt.savefig(os.path.join(f"{signal_name}_{N_Fourier}", "{}.png".format(i)))
+        plt.savefig(os.path.join(FOLDER, "{}.png".format(i)))
         # plt.show()
         plt.close()
-        
+
     images = []
     for i in range(frames):
-        images.append(imageio.imread(os.path.join(f"{signal_name}_{N_Fourier}", "{}.png".format(i))))
-    imageio.mimsave(f"{signal_name}_{N_Fourier}.mp4", images)
+        images.append(imageio.imread(os.path.join(FOLDER, "{}.png".format(i))))
+    imageio.mimsave(os.path.join("media", f"{signal_name}_{N_Fourier}.mp4"), images)
 
 
 if __name__ == "__main__":
